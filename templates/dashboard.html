@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Vehicle Damage Detection{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <h1>Vehicle Damage Assessment Dashboard</h1>
+    
+    <div class="upload-section">
+        <h2>Upload Vehicle Image</h2>
+        <div class="upload-card">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input-wrapper">
+                    <input type="file" id="imageInput" name="image" accept="image/*" required>
+                    <label for="imageInput" class="file-label">
+                        <span id="fileName">Choose an image...</span>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary" id="uploadBtn">Analyze Damage</button>
+            </form>
+            
+            <div id="preview" class="image-preview" style="display: none;">
+                <img id="previewImage" src="" alt="Preview">
+            </div>
+            
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing image...</p>
+            </div>
+            
+            <div id="result" class="result-card" style="display: none;">
+                <h3>Assessment Results</h3>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <span class="result-label">Damaged Part:</span>
+                        <span class="result-value" id="damagedPart"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Severity:</span>
+                        <span class="result-value severity" id="severity"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Damage Ratio:</span>
+                        <span class="result-value" id="damageRatio"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Estimated Cost:</span>
+                        <span class="result-value cost" id="estimatedCost"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error" class="alert alert-error" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <div class="history-section">
+        <h2>Assessment History</h2>
+        <div class="history-table-wrapper">
+            {% if history %}
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Damaged Part</th>
+                        <th>Severity</th>
+                        <th>Damage Ratio</th>
+                        <th>Estimated Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in history %}
+                    <tr>
+                        <td>{{ record.timestamp }}</td>
+                        <td>{{ record.damaged_part }}</td>
+                        <td><span class="badge severity-{{ record.severity_level.lower() }}">{{ record.severity_level }}</span></td>
+                        <td>{{ "%.2f"|format(record.damage_ratio * 100) }}%</td>
+                        <td>₹{{ "{:,.0f}".format(record.estimated_cost) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-history">No assessment history yet. Upload an image to get started!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const imageInput = document.getElementById('imageInput');
+    const fileName = document.getElementById('fileName');
+    const preview = document.getElementById('preview');
+    const previewImage = document.getElementById('previewImage');
+    const uploadForm = document.getElementById('uploadForm');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const error = document.getElementById('error');
+    
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    uploadForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('image', imageInput.files[0]);
+        
+        loading.style.display = 'block';
+        result.style.display = 'none';
+        error.style.display = 'none';
+        
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            loading.style.display = 'none';
+            
+            if (data.success) {
+                document.getElementById('damagedPart').textContent = data.damaged_part;
+                document.getElementById('severity').textContent = data.severity;
+                document.getElementById('severity').className = 'result-value severity severity-' + data.severity.toLowerCase();
+                document.getElementById('damageRatio').textContent = (data.damage_ratio * 100).toFixed(2) + '%';
+                document.getElementById('estimatedCost').textContent = '₹' + data.estimated_cost.toLocaleString('en-IN');
+                
+                result.style.display = 'block';
+                
+                setTimeout(() => location.reload(), 3000);
+            } else {
+                error.textContent = data.message || 'Error processing image';
+                error.style.display = 'block';
+            }
+        } catch (err) {
+            loading.style.display = 'none';
+            error.textContent = 'Network error. Please try again.';
+            error.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}
