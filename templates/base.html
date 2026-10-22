@@ -4,33 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Vehicle Damage Detection{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="description" content="{% block meta_description %}AI-powered vehicle damage detection and insurance claim estimation.{% endblock %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <h2>🚗 Vehicle Damage Detection</h2>
-            </div>
+        <div class="container nav-inner">
+            <a href="{% url 'core:index' %}" class="nav-brand">
+                <span class="brand-icon">🚗</span>
+                <span class="brand-text">ClaimSense AI</span>
+            </a>
             <div class="nav-links">
-                {% if session.user_id %}
-                <span>Welcome, {{ session.username }}!</span>
-                <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('logout') }}">Logout</a>
+                <a href="{% url 'core:claim_estimator' %}" class="nav-link" id="nav-claim-estimator">🧮 Claim Estimator</a>
+                {% if user.is_authenticated %}
+                    {% if user.avatar_url %}
+                        <img src="{{ user.avatar_url }}" alt="avatar" class="user-avatar">
+                    {% endif %}
+                    <span class="nav-username">{{ user.display_name }}</span>
+                    <a href="{% url 'core:dashboard' %}" class="nav-link">Dashboard</a>
+                    <a href="{% url 'core:logout' %}" class="btn btn-outline btn-sm">Sign Out</a>
                 {% else %}
-                <a href="{{ url_for('login') }}">Login</a>
-                <a href="{{ url_for('register') }}">Register</a>
+                    <a href="{% url 'core:login' %}" class="btn btn-primary btn-sm">Sign In</a>
                 {% endif %}
             </div>
         </div>
     </nav>
-    
+
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="flash-message flash-{{ message.tags }}">
+            {{ message }}
+            <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <main class="main-content">
         {% block content %}{% endblock %}
     </main>
-    
-    <footer>
-        <p>&copy; 2024 Vehicle Damage Detection System. All rights reserved.</p>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2024 ClaimSense AI — Vehicle Damage Detection & Insurance Claim Estimation</p>
+        </div>
     </footer>
+
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

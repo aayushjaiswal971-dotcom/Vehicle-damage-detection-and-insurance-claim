@@ -58,9 +58,16 @@ Thumbs.db
 # Logs
 *.log
 
-# Environment
+# Environment — NEVER commit real .env
 .env
 .env.local
+.env.*.local
 
 # Dataset
 Car Damage Detection.v1i.yolov8/
+
+# Django
+django_app/staticfiles/
+*.pyc
+db.sqlite3
+media/

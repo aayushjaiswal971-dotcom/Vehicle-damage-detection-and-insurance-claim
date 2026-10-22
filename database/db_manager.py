@@ -49,8 +49,8 @@ class DatabaseManager:
         return hashlib.sha256(password.encode()).hexdigest()
     
     def register_user(self, username, email, password):
+        conn = self.get_connection()
         try:
-            conn = self.get_connection()
             cursor = conn.cursor()
             password_hash = self.hash_password(password)
             
@@ -60,66 +60,73 @@ class DatabaseManager:
             )
             conn.commit()
             user_id = cursor.lastrowid
-            conn.close()
             return True, user_id
         except sqlite3.IntegrityError:
             return False, "Email already registered"
+        finally:
+            conn.close()
     
     def login_user(self, email, password):
         conn = self.get_connection()
-        cursor = conn.cursor()
-        password_hash = self.hash_password(password)
-        
-        cursor.execute(
-            'SELECT id, username FROM users WHERE email = ? AND password_hash = ?',
-            (email, password_hash)
-        )
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            return True, {'id': user[0], 'username': user[1], 'email': email}
-        return False, "Invalid email or password"
+        try:
+            cursor = conn.cursor()
+            password_hash = self.hash_password(password)
+            
+            cursor.execute(
+                'SELECT id, username FROM users WHERE email = ? AND password_hash = ?',
+                (email, password_hash)
+            )
+            user = cursor.fetchone()
+            
+            if user:
+                return True, {'id': user[0], 'username': user[1], 'email': email}
+            return False, "Invalid email or password"
+        finally:
+            conn.close()
     
     def save_prediction(self, user_id, image_path, damaged_part, severity, damage_ratio, cost):
         conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO prediction_history 
-            (user_id, image_path, damaged_part, severity_level, damage_ratio, estimated_cost)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (user_id, image_path, damaged_part, severity, damage_ratio, cost))
-        
-        conn.commit()
-        prediction_id = cursor.lastrowid
-        conn.close()
-        return prediction_id
+        try:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO prediction_history 
+                (user_id, image_path, damaged_part, severity_level, damage_ratio, estimated_cost)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user_id, image_path, damaged_part, severity, damage_ratio, cost))
+            
+            conn.commit()
+            prediction_id = cursor.lastrowid
+            return prediction_id
+        finally:
+            conn.close()
     
     def get_user_history(self, user_id):
         conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, image_path, damaged_part, severity_level, 
-                   damage_ratio, estimated_cost, timestamp
-            FROM prediction_history
-            WHERE user_id = ?
-            ORDER BY timestamp DESC
-        ''', (user_id,))
-        
-        history = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'id': row[0],
-                'image_path': row[1],
-                'damaged_part': row[2],
-                'severity_level': row[3],
-                'damage_ratio': row[4],
-                'estimated_cost': row[5],
-                'timestamp': row[6]
-            }
-            for row in history
-        ]
+        try:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT id, image_path, damaged_part, severity_level, 
+                       damage_ratio, estimated_cost, timestamp
+                FROM prediction_history
+                WHERE user_id = ?
+                ORDER BY timestamp DESC
+            ''', (user_id,))
+            
+            history = cursor.fetchall()
+            
+            return [
+                {
+                    'id': row[0],
+                    'image_path': row[1],
+                    'damaged_part': row[2],
+                    'severity_level': row[3],
+                    'damage_ratio': row[4],
+                    'estimated_cost': row[5],
+                    'timestamp': row[6]
+                }
+                for row in history
+            ]
+        finally:
+            conn.close()

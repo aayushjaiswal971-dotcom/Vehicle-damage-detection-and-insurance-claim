@@ -1,155 +1,391 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Dashboard - Vehicle Damage Detection{% endblock %}
+{% block title %}Dashboard — ClaimSense AI{% endblock %}
 
 {% block content %}
-<div class="container dashboard-container">
-    <h1>Vehicle Damage Assessment Dashboard</h1>
-    
+<div class="dashboard-page container">
+
+    <!-- Hero Header -->
+    <div class="dash-header">
+        <div class="dash-header-text">
+            <h1>Vehicle Damage Assessment</h1>
+            <p>Upload a photo of your damaged vehicle and our AI will identify the damage and estimate your insurance claim in seconds.</p>
+        </div>
+        {% if avatar_url %}
+        <img src="{{ avatar_url }}" alt="profile" class="dash-avatar">
+        {% endif %}
+    </div>
+
+    <!-- Upload Card -->
     <div class="upload-section">
-        <h2>Upload Vehicle Image</h2>
-        <div class="upload-card">
-            <form id="uploadForm" enctype="multipart/form-data">
-                <div class="file-input-wrapper">
-                    <input type="file" id="imageInput" name="image" accept="image/*" required>
-                    <label for="imageInput" class="file-label">
-                        <span id="fileName">Choose an image...</span>
-                    </label>
+        <div class="glass-card upload-card">
+            <h2 class="section-title">📸 Analyse Your Vehicle</h2>
+
+            <div class="tab-bar">
+                <button class="tab-btn active" id="tab-upload" onclick="switchTab('upload')">Upload File</button>
+                <button class="tab-btn" id="tab-camera" onclick="switchTab('camera')">Use Camera</button>
+            </div>
+
+            <!-- File Upload Tab -->
+            <div id="pane-upload" class="upload-pane">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-zone-inner">
+                            <div class="drop-icon">📁</div>
+                            <p>Drag &amp; drop your image here, or</p>
+                            <label for="imageInput" class="btn btn-outline">Browse files</label>
+                            <input type="file" id="imageInput" name="image" accept=".jpg,.jpeg,.png" hidden>
+                            <p class="drop-hint">JPG / PNG — max 10 MB</p>
+                        </div>
+                    </div>
+                    <div id="filePreview" class="image-preview" style="display:none;">
+                        <img id="previewImg" src="" alt="Preview">
+                        <button type="button" class="remove-img-btn" onclick="clearFilePreview()">✕ Remove</button>
+                    </div>
+                    <button type="submit" id="analyseBtn" class="btn btn-primary btn-full" disabled>
+                        ✨ Analyse Damage
+                    </button>
+                </form>
+            </div>
+
+            <!-- Camera Tab -->
+            <div id="pane-camera" class="upload-pane" style="display:none;">
+                <div class="camera-container">
+                    <video id="cameraVideo" autoplay playsinline class="camera-feed"></video>
+                    <canvas id="cameraCanvas" style="display:none;"></canvas>
                 </div>
-                <button type="submit" class="btn btn-primary" id="uploadBtn">Analyze Damage</button>
-            </form>
-            
-            <div id="preview" class="image-preview" style="display: none;">
-                <img id="previewImage" src="" alt="Preview">
+                <div class="camera-controls">
+                    <button id="startCameraBtn" class="btn btn-outline" onclick="startCamera()">📷 Start Camera</button>
+                    <button id="captureBtn" class="btn btn-primary" onclick="capturePhoto()" style="display:none;">Capture</button>
+                    <button id="retakeBtn" class="btn btn-outline" onclick="retakePhoto()" style="display:none;">Retake</button>
+                    <button id="analyseCameraBtn" class="btn btn-primary" onclick="analyseCamera()" style="display:none;">✨ Analyse</button>
+                </div>
+                <div id="capturePreview" style="display:none;">
+                    <img id="capturedImg" src="" alt="Captured" class="captured-image">
+                </div>
             </div>
-            
-            <div id="loading" class="loading" style="display: none;">
-                <div class="spinner"></div>
-                <p>Analyzing image...</p>
+
+            <!-- Loading & Results -->
+            <div id="loadingState" class="loading-state" style="display:none;">
+                <div class="spinner-ring"></div>
+                <p id="loadingMsg">Uploading image…</p>
             </div>
-            
-            <div id="result" class="result-card" style="display: none;">
-                <h3>Assessment Results</h3>
+
+            <div id="resultCard" class="result-card" style="display:none;">
+                <h3>🔍 Assessment Results</h3>
                 <div class="result-grid">
                     <div class="result-item">
-                        <span class="result-label">Damaged Part:</span>
-                        <span class="result-value" id="damagedPart"></span>
+                        <span class="result-label">Damaged Part</span>
+                        <span class="result-value" id="resDamagedPart">—</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Severity:</span>
-                        <span class="result-value severity" id="severity"></span>
+                        <span class="result-label">Damage Type</span>
+                        <span class="result-value" id="resDamageType">—</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Damage Ratio:</span>
-                        <span class="result-value" id="damageRatio"></span>
+                        <span class="result-label">Severity</span>
+                        <span class="result-value" id="resSeverity">—</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Estimated Cost:</span>
-                        <span class="result-value cost" id="estimatedCost"></span>
+                        <span class="result-label">AI Confidence</span>
+                        <span class="result-value" id="resConfidence">—</span>
+                    </div>
+                    <div class="result-item result-item--wide">
+                        <span class="result-label">Estimated Claim</span>
+                        <span class="result-value cost" id="resCost">—</span>
                     </div>
                 </div>
+                <p class="result-notes" id="resNotes"></p>
+                <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+                    <a id="btnEstimatorLink" href="{% url 'core:claim_estimator' %}" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:6px;">
+                        <span>🧮</span> Open in Claim Estimator &amp; Benchmark →
+                    </a>
+                    <button class="btn btn-outline btn-sm" onclick="resetForm()">Analyse Another</button>
+                </div>
             </div>
-            
-            <div id="error" class="alert alert-error" style="display: none;"></div>
+
+            <div id="errorState" class="alert alert-error" style="display:none;"></div>
         </div>
     </div>
-    
+
+    <!-- History Table -->
     <div class="history-section">
-        <h2>Assessment History</h2>
-        <div class="history-table-wrapper">
-            {% if history %}
+        <h2 class="section-title">📋 Assessment History</h2>
+        {% if history %}
+        <div class="history-table-wrapper glass-card">
             <table class="history-table">
                 <thead>
                     <tr>
                         <th>Date</th>
                         <th>Damaged Part</th>
+                        <th>Damage Type</th>
                         <th>Severity</th>
-                        <th>Damage Ratio</th>
-                        <th>Estimated Cost</th>
+                        <th>Confidence</th>
+                        <th>Estimated Claim</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for record in history %}
                     <tr>
-                        <td>{{ record.timestamp }}</td>
-                        <td>{{ record.damaged_part }}</td>
-                        <td><span class="badge severity-{{ record.severity_level.lower() }}">{{ record.severity_level }}</span></td>
-                        <td>{{ "%.2f"|format(record.damage_ratio * 100) }}%</td>
-                        <td>₹{{ "{:,.0f}".format(record.estimated_cost) }}</td>
+                        <td>{{ record.vehicle_image.uploaded_at|date:"d M Y, H:i" }}</td>
+                        <td>{{ record.insight.detected_part|default:"—"|capfirst }}</td>
+                        <td>{{ record.insight.damage_type|default:"—"|capfirst }}</td>
+                        <td>
+                            {% if record.insight %}
+                            <span class="badge badge-{{ record.insight.severity }}">{{ record.insight.severity|capfirst }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if record.insight %}
+                            {{ record.insight.confidence|floatformat:0 }}%
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="cost-cell">
+                            {% if record.estimate %}
+                            ₹{{ record.estimate.estimated_cost|floatformat:0 }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'core:claim_estimator' %}?image_id={{ record.vehicle_image.id }}&damaged_part={{ record.insight.detected_part|default:'bumper' }}&damage_type={{ record.insight.damage_type|default:'dent' }}&severity={{ record.insight.severity|default:'moderate' }}" class="btn btn-outline btn-sm" style="font-size:0.75rem; padding:4px 8px;">
+                                🧮 Estimate
+                            </a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            {% else %}
-            <p class="no-history">No assessment history yet. Upload an image to get started!</p>
-            {% endif %}
         </div>
+        {% else %}
+        <div class="empty-state glass-card">
+            <p class="empty-icon">🔍</p>
+            <p>No assessments yet — upload your first vehicle image above to get started.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
+{% endblock %}
 
+{% block extra_scripts %}
 <script>
-    const imageInput = document.getElementById('imageInput');
-    const fileName = document.getElementById('fileName');
-    const preview = document.getElementById('preview');
-    const previewImage = document.getElementById('previewImage');
-    const uploadForm = document.getElementById('uploadForm');
-    const loading = document.getElementById('loading');
-    const result = document.getElementById('result');
-    const error = document.getElementById('error');
-    
-    imageInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            fileName.textContent = file.name;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+/* ── Tab switcher ─────────────────────────────────────────────────────────── */
+function switchTab(tab) {
+    document.getElementById('pane-upload').style.display = tab === 'upload' ? '' : 'none';
+    document.getElementById('pane-camera').style.display = tab === 'camera' ? '' : 'none';
+    document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+    document.getElementById('tab-camera').classList.toggle('active', tab === 'camera');
+}
+
+/* ── File upload / drag-drop ─────────────────────────────────────────────── */
+const dropZone = document.getElementById('dropZone');
+const imageInput = document.getElementById('imageInput');
+const analyseBtn = document.getElementById('analyseBtn');
+
+imageInput.addEventListener('change', e => {
+    if (e.target.files[0]) showFilePreview(e.target.files[0]);
+});
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        imageInput.files = dt.files;
+        showFilePreview(file);
+    }
+});
+
+function showFilePreview(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('filePreview').style.display = '';
+        dropZone.style.display = 'none';
+        analyseBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearFilePreview() {
+    imageInput.value = '';
+    document.getElementById('filePreview').style.display = 'none';
+    dropZone.style.display = '';
+    analyseBtn.disabled = true;
+}
+
+/* ── Camera ──────────────────────────────────────────────────────────────── */
+let capturedBlob = null;
+let cameraStream = null;
+
+async function startCamera() {
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById('cameraVideo').srcObject = cameraStream;
+        document.getElementById('cameraVideo').style.display = '';
+        document.getElementById('startCameraBtn').style.display = 'none';
+        document.getElementById('captureBtn').style.display = '';
+    } catch (e) {
+        showError('Camera access denied or not available.');
+    }
+}
+
+function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+        capturedBlob = blob;
+        const url = URL.createObjectURL(blob);
+        document.getElementById('capturedImg').src = url;
+        document.getElementById('capturePreview').style.display = '';
+        document.getElementById('cameraVideo').style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'none';
+        document.getElementById('retakeBtn').style.display = '';
+        document.getElementById('analyseCameraBtn').style.display = '';
+    }, 'image/jpeg', 0.92);
+}
+
+function retakePhoto() {
+    capturedBlob = null;
+    document.getElementById('capturePreview').style.display = 'none';
+    document.getElementById('cameraVideo').style.display = '';
+    document.getElementById('retakeBtn').style.display = 'none';
+    document.getElementById('analyseCameraBtn').style.display = 'none';
+    document.getElementById('captureBtn').style.display = '';
+}
+
+function analyseCamera() {
+    if (!capturedBlob) return;
+    // Convert blob to base64 and send
+    const reader = new FileReader();
+    reader.onload = async e => {
+        await submitImage(null, e.target.result);
+    };
+    reader.readAsDataURL(capturedBlob);
+}
+
+/* ── Form submit ─────────────────────────────────────────────────────────── */
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const file = imageInput.files[0];
+    if (!file) return;
+    await submitImage(file, null);
+});
+
+const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '{{ csrf_token }}';
+
+async function submitImage(file, base64Data) {
+    showLoading('Uploading image…');
+    hideResult(); hideError();
+
+    const formData = new FormData();
+    if (file) {
+        formData.append('image', file);
+    } else {
+        formData.append('image_data', base64Data);
+    }
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    let vehicleImageId;
+    try {
+        const res = await fetch('{% url "core:upload" %}', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': csrfToken },
+        });
+        const data = await res.json();
+        if (!data.success) { showError(data.message || 'Upload failed.'); return; }
+        vehicleImageId = data.vehicle_image_id;
+    } catch (err) {
+        showError('Network error during upload. Please try again.');
+        return;
+    }
+
+    // Poll for result
+    showLoading('Analysing with Gemini AI…');
+    await pollResult(vehicleImageId);
+}
+
+async function pollResult(id, attempts = 0) {
+    if (attempts > 30) { showError('Analysis timed out. Please try again.'); return; }
+    try {
+        const res = await fetch(`{% url "core:result" 0 %}`.replace('/0/', `/${id}/`));
+        const data = await res.json();
+
+        if (!data.success) { showError(data.message || 'Analysis failed.'); return; }
+        if (!data.ready) {
+            await new Promise(r => setTimeout(r, 2000));
+            return pollResult(id, attempts + 1);
         }
-    });
-    
-    uploadForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData();
-        formData.append('image', imageInput.files[0]);
-        
-        loading.style.display = 'block';
-        result.style.display = 'none';
-        error.style.display = 'none';
-        
-        try {
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            loading.style.display = 'none';
-            
-            if (data.success) {
-                document.getElementById('damagedPart').textContent = data.damaged_part;
-                document.getElementById('severity').textContent = data.severity;
-                document.getElementById('severity').className = 'result-value severity severity-' + data.severity.toLowerCase();
-                document.getElementById('damageRatio').textContent = (data.damage_ratio * 100).toFixed(2) + '%';
-                document.getElementById('estimatedCost').textContent = '₹' + data.estimated_cost.toLocaleString('en-IN');
-                
-                result.style.display = 'block';
-                
-                setTimeout(() => location.reload(), 3000);
-            } else {
-                error.textContent = data.message || 'Error processing image';
-                error.style.display = 'block';
-            }
-        } catch (err) {
-            loading.style.display = 'none';
-            error.textContent = 'Network error. Please try again.';
-            error.style.display = 'block';
-        }
-    });
+
+        hideLoading();
+        showResult(data);
+    } catch (err) {
+        showError('Error fetching results.');
+    }
+}
+
+/* ── UI helpers ──────────────────────────────────────────────────────────── */
+function showLoading(msg) {
+    document.getElementById('loadingMsg').textContent = msg;
+    document.getElementById('loadingState').style.display = '';
+}
+function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
+
+function showResult(data) {
+    document.getElementById('resDamagedPart').textContent = capitalise(data.damaged_part) || '—';
+    document.getElementById('resDamageType').textContent = capitalise(data.damage_type) || '—';
+
+    const sevEl = document.getElementById('resSeverity');
+    sevEl.textContent = capitalise(data.severity) || '—';
+    sevEl.className = `result-value severity-${data.severity}`;
+
+    document.getElementById('resConfidence').textContent =
+        data.confidence ? `${(data.confidence * 100).toFixed(0)}%` : '—';
+    document.getElementById('resCost').textContent =
+        data.estimated_cost ? `₹${Number(data.estimated_cost).toLocaleString('en-IN')}` : '—';
+    document.getElementById('resNotes').textContent = data.notes || '';
+
+    const btnLink = document.getElementById('btnEstimatorLink');
+    if (btnLink) {
+        const p = new URLSearchParams({
+            damaged_part: data.damaged_part || 'bumper',
+            damage_type: data.damage_type || 'dent',
+            severity: data.severity || 'moderate',
+            notes: data.notes || '',
+        });
+        btnLink.href = `{% url "core:claim_estimator" %}?${p.toString()}`;
+    }
+
+    document.getElementById('resultCard').style.display = '';
+}
+function hideResult() { document.getElementById('resultCard').style.display = 'none'; }
+
+function showError(msg) {
+    const el = document.getElementById('errorState');
+    el.textContent = msg;
+    el.style.display = '';
+    hideLoading();
+}
+function hideError() { document.getElementById('errorState').style.display = 'none'; }
+
+function resetForm() {
+    clearFilePreview();
+    hideResult(); hideError(); hideLoading();
+    capturedBlob = null;
+}
+
+function capitalise(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
+}
 </script>
 {% endblock %}

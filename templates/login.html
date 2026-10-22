@@ -1,37 +1,70 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Login - Vehicle Damage Detection{% endblock %}
+{% block title %}Sign In — ClaimSense AI{% endblock %}
+{% block meta_description %}Sign in to ClaimSense AI using your Google account to start detecting vehicle damage and estimating insurance claims.{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="auth-card">
-        <h2>Login</h2>
-        
-        {% if message %}
-        <div class="alert alert-success">{{ message }}</div>
+<div class="auth-page">
+    <div class="auth-card glass-card">
+        <div class="auth-header">
+            <div class="auth-icon">🚗</div>
+            <h1 class="auth-title">ClaimSense AI</h1>
+            <p class="auth-subtitle">AI-powered vehicle damage &amp; insurance claim estimation</p>
+        </div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
         {% endif %}
-        
-        {% if error %}
-        <div class="alert alert-error">{{ error }}</div>
-        {% endif %}
-        
-        <form method="POST" action="{{ url_for('login') }}">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
+
+        <form method="post" action="{% url 'core:login' %}" class="auth-form" style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            {% csrf_token %}
+            <div class="form-group" style="display:flex; flex-direction:column; gap:4px; text-align:left;">
+                <label for="id_email" style="font-size:0.85rem; font-weight:600; color:var(--text-muted, #94a3b8);">Email Address</label>
+                <input type="email" name="email" id="id_email" required placeholder="demo@claimsense.ai" class="form-control" style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(15,23,42,0.6); color:#fff; outline:none;">
             </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+            <div class="form-group" style="display:flex; flex-direction:column; gap:4px; text-align:left;">
+                <label for="id_password" style="font-size:0.85rem; font-weight:600; color:var(--text-muted, #94a3b8);">Password</label>
+                <input type="password" name="password" id="id_password" required placeholder="••••••••" class="form-control" style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:rgba(15,23,42,0.6); color:#fff; outline:none;">
             </div>
-            
-            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:11px; margin-top:4px; font-weight:600; border-radius:8px; cursor:pointer;">
+                Sign In with Credentials
+            </button>
         </form>
-        
-        <p class="auth-link">
-            Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
-        </p>
+
+        <div class="auth-divider" style="margin: 14px 0; display:flex; align-items:center; text-align:center; color:#64748b; font-size:0.8rem;">
+            <span style="flex:1; border-bottom:1px solid rgba(255,255,255,0.1);"></span>
+            <span style="padding:0 10px;">OR</span>
+            <span style="flex:1; border-bottom:1px solid rgba(255,255,255,0.1);"></span>
+        </div>
+
+        <!-- Google OAuth button -->
+        <a href="{% url 'google_login' %}" id="google-signin-btn" class="btn btn-google" style="margin-bottom:16px;">
+            <img src="{% static 'images/google-logo.svg' %}" alt="Google" class="google-logo" onerror="this.style.display='none'">
+            <span>Sign in with Google</span>
+        </a>
+
+        <!-- Quick Demo Credentials Fill -->
+        <div style="margin-top:10px; padding:10px; border-radius:8px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); font-size:0.82rem; text-align:left;">
+            <div style="font-weight:600; color:#60a5fa; margin-bottom:6px;">⚡ Quick Test Credentials:</div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:#cbd5e1;">
+                <span><strong>User:</strong> demo@claimsense.ai</span>
+                <button type="button" onclick="fillCreds('demo@claimsense.ai', 'Demo@12345')" style="background:#2563eb; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">Auto-fill</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:#cbd5e1;">
+                <span><strong>Admin:</strong> admin@claimsense.ai</span>
+                <button type="button" onclick="fillCreds('admin@claimsense.ai', 'Admin@12345')" style="background:#334155; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">Auto-fill</button>
+            </div>
+        </div>
+
+        <script>
+            function fillCreds(email, pass) {
+                document.getElementById('id_email').value = email;
+                document.getElementById('id_password').value = pass;
+            }
+        </script>
     </div>
 </div>
 {% endblock %}

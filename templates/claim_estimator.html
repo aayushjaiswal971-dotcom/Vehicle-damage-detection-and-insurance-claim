@@ -1,0 +1,1082 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Claim Estimator & ROI Benchmark — ClaimSense AI{% endblock %}
+{% block meta_description %}Interactive Vehicle Damage Claim Estimator & Regional Market Benchmarking Tool. Calculate repair costs, benchmark against industry rates, and get AI recommendations.{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Estimator Page Design Tokens (Adapted from 21st.dev CACulator) ── */
+.estimator-hero {
+    text-align: center;
+    max-width: 860px;
+    margin: 0 auto 36px auto;
+}
+
+.estimator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    letter-spacing: 0.02em;
+}
+
+.estimator-title {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+}
+
+.estimator-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary, #94a3b8);
+    line-height: 1.6;
+}
+
+/* Banner */
+.prefill-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    margin-bottom: 30px;
+    border-radius: var(--radius-md, 12px);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.prefill-banner.manual-hint {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* Layout Grid */
+.estimator-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 28px;
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .estimator-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Forms & Inputs */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-glass, rgba(255,255,255,0.08));
+}
+
+.panel-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section {
+    margin-bottom: 24px;
+}
+
+.section-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--accent-blue, #3b82f6);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 600px) {
+    .field-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.field-select, .field-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1px solid var(--border-glass, rgba(255,255,255,0.12));
+    background: rgba(15, 23, 42, 0.7);
+    color: #f1f5f9;
+    font-family: inherit;
+    font-size: 0.92rem;
+    outline: none;
+    transition: var(--transition, all 0.2s ease);
+}
+
+.field-select:focus, .field-input:focus {
+    border-color: var(--accent-blue, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Segmented Chips */
+.chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.chip-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.chip-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+}
+
+.chip-btn.active {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #3b82f6;
+    color: #60a5fa;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+.chip-btn.severity-minor.active {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: #22c55e;
+    color: #4ade80;
+}
+
+.chip-btn.severity-moderate.active {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+    color: #fbbf24;
+}
+
+.chip-btn.severity-major.active {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #f87171;
+}
+
+/* Slider */
+.slider-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+    cursor: pointer;
+}
+
+.range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+/* Calculate Button */
+.btn-calc {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-md, 12px);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+    transition: all 0.25s ease;
+    margin-top: 10px;
+}
+
+.btn-calc:hover {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    box-shadow: 0 6px 28px rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+}
+
+/* ── Result Cards ── */
+.result-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.headline-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: var(--radius-lg, 20px);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-card), 0 0 35px rgba(59, 130, 246, 0.12);
+}
+
+.headline-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.headline-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.headline-number {
+    font-size: clamp(2.4rem, 5vw, 3.25rem);
+    font-weight: 800;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.currency-sym {
+    color: #60a5fa;
+    font-weight: 700;
+}
+
+.headline-range {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.range-highlight {
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.badge-claim-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-recommended {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-advisory {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Breakdown Grid */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.breakdown-item {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-sm, 8px);
+    padding: 12px 14px;
+}
+
+.breakdown-item-label {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breakdown-item-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+/* ── Benchmark Section ── */
+.benchmark-card {
+    padding: 24px;
+}
+
+.benchmark-delta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.delta-good { color: #4ade80; }
+.delta-neutral { color: #60a5fa; }
+.delta-warn { color: #fbbf24; }
+
+/* Gauge representation */
+.gauge-wrapper {
+    margin: 16px 0 20px 0;
+}
+
+.gauge-track {
+    position: relative;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+}
+
+.gauge-seg-low { width: 33.3%; background: #22c55e; opacity: 0.7; }
+.gauge-seg-mid { width: 33.3%; background: #3b82f6; opacity: 0.7; }
+.gauge-seg-high { width: 33.4%; background: #ef4444; opacity: 0.7; }
+
+.gauge-pointer-bar {
+    position: relative;
+    height: 20px;
+    margin-top: 4px;
+}
+
+.gauge-pointer {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gauge-pointer-dot {
+    width: 14px;
+    height: 14px;
+    background: #ffffff;
+    border: 3px solid #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+.gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 6px;
+}
+
+/* Comparative Bar chart */
+.compare-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bar-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+}
+
+.bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.bar-fill-independent { background: #64748b; }
+.bar-fill-market { background: #3b82f6; }
+.bar-fill-dealer { background: #8b5cf6; }
+.bar-fill-user { background: linear-gradient(90deg, #10b981, #06b6d4); }
+
+/* ── AI Recommendations Panel ── */
+.ai-panel {
+    padding: 24px;
+    border-color: rgba(139, 92, 246, 0.25);
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(30, 27, 75, 0.4) 100%);
+}
+
+.ai-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #c084fc;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.ai-content-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: var(--radius-sm, 8px);
+    padding: 16px;
+    margin: 14px 0;
+}
+
+.ai-recommendation-text {
+    font-size: 0.92rem;
+    color: #e2e8f0;
+    line-height: 1.6;
+}
+
+.checklist-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.check-icon {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid #10b981;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    margin-top: 2px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Header -->
+    <div class="estimator-hero">
+        <div class="estimator-badge">
+            <span>✨</span> ROI &amp; Repair Benchmark Engine
+        </div>
+        <h1 class="estimator-title">ClaimSense ROI &amp; Claim Estimator</h1>
+        <p class="estimator-subtitle">
+            Simulate vehicle repair costs, compare against regional garage benchmarks, and determine whether filing an insurance claim maximizes your ROI.
+        </p>
+    </div>
+
+    <!-- Pre-fill or Manual Banner -->
+    {% if is_prefilled %}
+    <div class="prefill-banner glass-card">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.5rem;">🚗</span>
+            <div>
+                <strong style="color:#60a5fa;">Auto-populated from Image Analysis #{{ vehicle_image.id }}</strong>
+                <p style="font-size:0.85rem; color:#cbd5e1; margin:2px 0 0 0;">
+                    Detected: <strong>{{ damaged_part|title }}</strong> ({{ damage_type|title }} · {{ severity|title }})
+                </p>
+            </div>
+        </div>
+        <a href="{% url 'core:claim_estimator' %}" class="btn btn-outline btn-sm" style="font-size:0.8rem;">
+            Reset to Manual Inputs
+        </a>
+    </div>
+    {% else %}
+    <div class="prefill-banner manual-hint glass-card">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.4rem;">📷</span>
+            <div>
+                <strong style="color:#34d399;">Manual Estimation Mode</strong>
+                <p style="font-size:0.85rem; color:#cbd5e1; margin:2px 0 0 0;">
+                    Have a photo of the damaged vehicle? Upload it on the dashboard for automated Gemini AI detection.
+                </p>
+            </div>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-primary btn-sm" style="font-size:0.8rem;">
+            Upload Photo →
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Main 2-Column Grid -->
+    <div class="estimator-grid">
+        
+        <!-- Left: Input & Tuning Panel -->
+        <div class="glass-card" style="padding: 28px;">
+            <div class="panel-header">
+                <h2 class="panel-title">
+                    <span>🎛️</span> Estimation Parameters
+                </h2>
+                <span style="font-size:0.8rem; color:#64748b;">Live Recalculation</span>
+            </div>
+
+            <form id="estimator-form" onsubmit="event.preventDefault(); triggerCalculate();">
+                <!-- Section 1: Vehicle & Damage Classification -->
+                <div class="form-section">
+                    <div class="section-label">1. Vehicle &amp; Damage Classification</div>
+                    
+                    <div class="field-group" style="margin-bottom: 14px;">
+                        <label class="field-label" for="inp-vehicle-type">Vehicle Category</label>
+                        <div class="chip-group" id="vehicle-type-chips">
+                            <button type="button" class="chip-btn {% if vehicle_type == 'hatchback' %}active{% endif %}" data-val="hatchback">Hatchback</button>
+                            <button type="button" class="chip-btn {% if vehicle_type == 'sedan' %}active{% endif %}" data-val="sedan">Sedan</button>
+                            <button type="button" class="chip-btn {% if vehicle_type == 'suv' %}active{% endif %}" data-val="suv">SUV</button>
+                            <button type="button" class="chip-btn {% if vehicle_type == 'luxury' %}active{% endif %}" data-val="luxury">Luxury / EV</button>
+                            <button type="button" class="chip-btn {% if vehicle_type == 'commercial' %}active{% endif %}" data-val="commercial">Commercial</button>
+                        </div>
+                        <input type="hidden" name="vehicle_type" id="inp-vehicle-type" value="{{ vehicle_type }}">
+                    </div>
+
+                    <div class="field-grid">
+                        <div class="field-group">
+                            <label class="field-label" for="inp-damaged-part">Damaged Part</label>
+                            <select class="field-select" id="inp-damaged-part" name="damaged_part" onchange="triggerCalculate();">
+                                <option value="bumper" {% if damaged_part == 'bumper' %}selected{% endif %}>Bumper (Front/Rear)</option>
+                                <option value="door" {% if damaged_part == 'door' %}selected{% endif %}>Door Panel</option>
+                                <option value="hood" {% if damaged_part == 'hood' %}selected{% endif %}>Hood / Bonnet</option>
+                                <option value="fender" {% if damaged_part == 'fender' %}selected{% endif %}>Fender / Wing</option>
+                                <option value="headlight" {% if damaged_part == 'headlight' %}selected{% endif %}>Headlight / Assembly</option>
+                                <option value="windshield" {% if damaged_part == 'windshield' %}selected{% endif %}>Windshield / Glass</option>
+                                <option value="quarter_panel" {% if damaged_part == 'quarter_panel' %}selected{% endif %}>Quarter Panel</option>
+                                <option value="trunk" {% if damaged_part == 'trunk' %}selected{% endif %}>Trunk / Tailgate</option>
+                                <option value="mirror" {% if damaged_part == 'mirror' %}selected{% endif %}>Side Mirror Unit</option>
+                                <option value="wheel" {% if damaged_part == 'wheel' %}selected{% endif %}>Wheel / Alloy</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="inp-damage-type">Damage Type</label>
+                            <select class="field-select" id="inp-damage-type" name="damage_type" onchange="triggerCalculate();">
+                                <option value="scratch" {% if damage_type == 'scratch' %}selected{% endif %}>Scratch / Scuff</option>
+                                <option value="dent" {% if damage_type == 'dent' %}selected{% endif %}>Dent / Crease</option>
+                                <option value="crack" {% if damage_type == 'crack' %}selected{% endif %}>Crack / Tear</option>
+                                <option value="shatter" {% if damage_type == 'shatter' %}selected{% endif %}>Shattered Glass</option>
+                                <option value="deformation" {% if damage_type == 'deformation' %}selected{% endif %}>Structural Deformation</option>
+                                <option value="paint_damage" {% if damage_type == 'paint_damage' %}selected{% endif %}>Paint Peeling / Deep Chip</option>
+                                <option value="missing_part" {% if damage_type == 'missing_part' %}selected{% endif %}>Missing Component</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-group" style="margin-top: 14px;">
+                        <label class="field-label">Damage Severity</label>
+                        <div class="chip-group" id="severity-chips">
+                            <button type="button" class="chip-btn severity-minor {% if severity == 'minor' %}active{% endif %}" data-val="minor">Minor (Cosmetic)</button>
+                            <button type="button" class="chip-btn severity-moderate {% if severity == 'moderate' %}active{% endif %}" data-val="moderate">Moderate (Repairable)</button>
+                            <button type="button" class="chip-btn severity-major {% if severity == 'major' %}active{% endif %}" data-val="major">Major (Structural)</button>
+                        </div>
+                        <input type="hidden" name="severity" id="inp-severity" value="{{ severity }}">
+                    </div>
+                </div>
+
+                <!-- Section 2: Workshop & Rate Modifiers -->
+                <div class="form-section">
+                    <div class="section-label">2. Workshop, Parts &amp; Regional Modifiers</div>
+
+                    <div class="field-grid">
+                        <div class="field-group">
+                            <label class="field-label" for="inp-part-source">Parts Quality Grade</label>
+                            <select class="field-select" id="inp-part-source" name="part_source" onchange="triggerCalculate();">
+                                <option value="oem" {% if part_source == 'oem' %}selected{% endif %}>OEM Genuine (+25%)</option>
+                                <option value="aftermarket" {% if part_source == 'aftermarket' %}selected{% endif %}>Certified Aftermarket (Standard)</option>
+                                <option value="recycled" {% if part_source == 'recycled' %}selected{% endif %}>Used / Recycled OEM (-25%)</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="inp-region-tier">Region / City Tier</label>
+                            <select class="field-select" id="inp-region-tier" name="region_tier" onchange="syncRegionRate(); triggerCalculate();">
+                                <option value="tier1" {% if region_tier == 'tier1' %}selected{% endif %}>Tier 1 Metro (₹850/hr)</option>
+                                <option value="tier2" {% if region_tier == 'tier2' %}selected{% endif %}>Tier 2 City (₹600/hr)</option>
+                                <option value="tier3" {% if region_tier == 'tier3' %}selected{% endif %}>Tier 3 / Rural (₹450/hr)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-group" style="margin-top: 14px;">
+                        <label class="field-label" for="inp-paint-scope">Paint &amp; Refinish Scope</label>
+                        <select class="field-select" id="inp-paint-scope" name="paint_scope" onchange="triggerCalculate();">
+                            <option value="spot" {% if paint_scope == 'spot' %}selected{% endif %}>Spot Touch-up / Blend</option>
+                            <option value="single_panel" {% if paint_scope == 'single_panel' %}selected{% endif %}>Single Panel Full Respray</option>
+                            <option value="multi_panel" {% if paint_scope == 'multi_panel' %}selected{% endif %}>Multi-Panel Paint &amp; Clearcoat</option>
+                            <option value="none" {% if paint_scope == 'none' %}selected{% endif %}>No Paint Required (PDR / Glass Only)</option>
+                        </select>
+                    </div>
+
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span>Custom Workshop Labor Rate:</span>
+                            <span id="rate-display" style="font-weight:700; color:#60a5fa;">₹{{ hourly_rate|default:700|floatformat:0 }}/hr</span>
+                        </div>
+                        <input type="range" min="300" max="1500" step="50" class="range-slider" id="inp-hourly-rate" name="hourly_rate" value="{{ hourly_rate|default:700 }}" oninput="updateRateLabel(this.value); triggerCalculate();">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-calc" id="btn-calculate">
+                    <span>⚡</span> Recalculate Claim &amp; ROI
+                </button>
+            </form>
+        </div>
+
+        <!-- Right: Results, Benchmark & AI Panel -->
+        <div class="result-column">
+            
+            <!-- Headline Estimation Card -->
+            <div class="headline-card">
+                <div class="headline-label">
+                    <span>Estimated Claim / Repair Cost</span>
+                    <span class="badge-claim-status badge-recommended" id="status-badge">
+                        ● Claim Recommended
+                    </span>
+                </div>
+
+                <div class="headline-number">
+                    <span class="currency-sym">₹</span>
+                    <span id="counter-total">{{ breakdown.total_estimated|floatformat:0 }}</span>
+                </div>
+
+                <div class="headline-range">
+                    <span>Expected Range:</span>
+                    <span class="range-highlight" id="range-display">₹{{ breakdown.min_estimated|floatformat:0 }} – ₹{{ breakdown.max_estimated|floatformat:0 }}</span>
+                </div>
+
+                <!-- Cost Breakdown Grid -->
+                <div class="breakdown-grid">
+                    <div class="breakdown-item">
+                        <div class="breakdown-item-label">🔩 Parts &amp; Hardware</div>
+                        <div class="breakdown-item-value" id="val-parts">₹{{ breakdown.parts_cost|floatformat:0 }}</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-item-label">⏱️ Labor (<span id="lbl-hours">{{ breakdown.labor_hours }}</span> hrs)</div>
+                        <div class="breakdown-item-value" id="val-labor">₹{{ breakdown.labor_cost|floatformat:0 }}</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-item-label">🎨 Paint &amp; Refinishing</div>
+                        <div class="breakdown-item-value" id="val-paint">₹{{ breakdown.paint_cost|floatformat:0 }}</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-item-label">🧾 Taxes &amp; GST (18%)</div>
+                        <div class="breakdown-item-value" id="val-taxes">₹{{ breakdown.taxes|floatformat:0 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional Benchmark Comparison Card -->
+            <div class="glass-card benchmark-card">
+                <div class="panel-header">
+                    <h3 class="panel-title" style="font-size:1.1rem;">
+                        <span>📊</span> Regional Market Benchmark
+                    </h3>
+                    <span style="font-size:0.8rem; color:#94a3b8;">Industry Comparison</span>
+                </div>
+
+                <div class="benchmark-delta" id="delta-container">
+                    <span id="delta-icon">📉</span>
+                    <span id="delta-text">
+                        Your estimate is <strong>{{ breakdown.diff_pct }}%</strong> vs market average
+                    </span>
+                </div>
+
+                <!-- Visual Benchmark Meter -->
+                <div class="gauge-wrapper">
+                    <div class="gauge-track">
+                        <div class="gauge-seg-low" title="Local Garage Range"></div>
+                        <div class="gauge-seg-mid" title="Market Average"></div>
+                        <div class="gauge-seg-high" title="Authorized Dealer Range"></div>
+                    </div>
+                    <div class="gauge-pointer-bar">
+                        <div class="gauge-pointer" id="gauge-pointer" style="left: 50%;">
+                            <div class="gauge-pointer-dot"></div>
+                        </div>
+                    </div>
+                    <div class="gauge-labels">
+                        <span>Local Garage (₹<span id="bm-low">{{ breakdown.independent_avg|floatformat:0 }}</span>)</span>
+                        <span>Market Avg (₹<span id="bm-mid">{{ breakdown.market_avg|floatformat:0 }}</span>)</span>
+                        <span>Authorized OEM (₹<span id="bm-high">{{ breakdown.dealer_avg|floatformat:0 }}</span>)</span>
+                    </div>
+                </div>
+
+                <!-- Comparative Bars -->
+                <div class="compare-bars">
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <span>Your Calculated Estimate</span>
+                            <strong style="color:#10b981;" id="bar-val-user">₹{{ breakdown.total_estimated|floatformat:0 }}</strong>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill bar-fill-user" id="bar-fill-user" style="width: 60%;"></div>
+                        </div>
+                    </div>
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <span>Regional Market Benchmark</span>
+                            <span id="bar-val-market">₹{{ breakdown.market_avg|floatformat:0 }}</span>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill bar-fill-market" id="bar-fill-market" style="width: 55%;"></div>
+                        </div>
+                    </div>
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <span>Authorized Dealership Rate</span>
+                            <span id="bar-val-dealer">₹{{ breakdown.dealer_avg|floatformat:0 }}</span>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill bar-fill-dealer" id="bar-fill-dealer" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI-Powered Recommendations Panel -->
+            <div class="glass-card ai-panel">
+                <div class="panel-header" style="border-bottom-color: rgba(139, 92, 246, 0.2);">
+                    <h3 class="panel-title" style="font-size:1.1rem; color:#e2e8f0;">
+                        <span>🤖</span> AI Claim &amp; Repair Recommendations
+                    </h3>
+                    <div class="ai-pill">Gemini Insights</div>
+                </div>
+
+                <div class="ai-content-box">
+                    <div style="font-size:0.8rem; font-weight:700; color:#a78bfa; margin-bottom:4px; text-transform:uppercase;">
+                        Technical Repair Strategy:
+                    </div>
+                    <p class="ai-recommendation-text" id="ai-repair-strategy">
+                        {% if repair_recommendation %}
+                            {{ repair_recommendation }}
+                        {% elif notes %}
+                            {{ notes }} Recommended for professional workshop inspection with OEM calibration.
+                        {% else %}
+                            Based on selected damage profile, Paintless Dent Repair (PDR) or panel realignment with OEM refinish is recommended. Claiming insurance is financially optimal if repair costs exceed standard policy deductible.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div style="font-size:0.85rem; font-weight:700; color:#f1f5f9; margin-top:16px;">
+                    📋 Recommended Action Plan:
+                </div>
+                <ul class="checklist-list">
+                    <li class="checklist-item">
+                        <div class="check-icon">✓</div>
+                        <span><strong>Document damage:</strong> Capture 4 corner photos and close-up angles showing paint depth.</span>
+                    </li>
+                    <li class="checklist-item">
+                        <div class="check-icon">✓</div>
+                        <span><strong>Deductible Check:</strong> Standard ₹1,000–₹2,000 compulsory deductible applies; claim is favorable.</span>
+                    </li>
+                    <li class="checklist-item">
+                        <div class="check-icon">✓</div>
+                        <span><strong>Cashless Garage:</strong> Opt for an authorized cashless network workshop for seamless surveyor clearance.</span>
+                    </li>
+                    <li class="checklist-item">
+                        <div class="check-icon">✓</div>
+                        <span><strong>NCB Impact:</strong> Evaluate preserving No-Claim-Bonus if total claim amount is under ₹5,000.</span>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Number Counter Animation (requestAnimationFrame) ──
+function animateValue(elementId, start, end, duration) {
+    const obj = document.getElementById(elementId);
+    if (!obj) return;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const current = Math.floor(progress * (end - start) + start);
+        obj.textContent = current.toLocaleString('en-IN');
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        } else {
+            obj.textContent = end.toLocaleString('en-IN');
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+// ── Chip Selectors ──
+function setupChips(containerId, hiddenInputId) {
+    const container = document.getElementById(containerId);
+    const hidden = document.getElementById(hiddenInputId);
+    if (!container || !hidden) return;
+
+    container.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            container.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            hidden.value = btn.getAttribute('data-val');
+            triggerCalculate();
+        });
+    });
+}
+
+setupChips('vehicle-type-chips', 'inp-vehicle-type');
+setupChips('severity-chips', 'inp-severity');
+
+function updateRateLabel(val) {
+    document.getElementById('rate-display').textContent = `₹${parseInt(val, 10).toLocaleString('en-IN')}/hr`;
+}
+
+function syncRegionRate() {
+    const reg = document.getElementById('inp-region-tier').value;
+    const rateInput = document.getElementById('inp-hourly-rate');
+    let rate = 700;
+    if (reg === 'tier1') rate = 850;
+    else if (reg === 'tier2') rate = 600;
+    else if (reg === 'tier3') rate = 450;
+    rateInput.value = rate;
+    updateRateLabel(rate);
+}
+
+// ── Real-time Calculation Engine (Client-side fallback & AJAX sync) ──
+let previousTotal = parseInt("{{ breakdown.total_estimated|default:28000 }}", 10);
+
+async function triggerCalculate() {
+    const form = document.getElementById('estimator-form');
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+    for (let [k, v] of formData.entries()) {
+        params.append(k, v);
+    }
+
+    try {
+        const response = await fetch(`{% url 'core:calculate_claim_api' %}?${params.toString()}`);
+        if (!response.ok) throw new Error("Recalculation error");
+        const data = await response.json();
+        if (data.success && data.breakdown) {
+            updateUI(data.breakdown);
+        }
+    } catch (err) {
+        console.warn("Client fallback calculation:", err);
+        // Fallback local estimation if offline
+        calculateLocally();
+    }
+}
+
+function updateUI(b) {
+    // 1. Animated Headline
+    animateValue('counter-total', previousTotal, b.total_estimated, 600);
+    previousTotal = b.total_estimated;
+
+    document.getElementById('range-display').textContent = `₹${b.min_estimated.toLocaleString('en-IN')} – ₹${b.max_estimated.toLocaleString('en-IN')}`;
+    document.getElementById('val-parts').textContent = `₹${b.parts_cost.toLocaleString('en-IN')}`;
+    document.getElementById('val-labor').textContent = `₹${b.labor_cost.toLocaleString('en-IN')}`;
+    document.getElementById('lbl-hours').textContent = b.labor_hours;
+    document.getElementById('val-paint').textContent = `₹${b.paint_cost.toLocaleString('en-IN')}`;
+    document.getElementById('val-taxes').textContent = `₹${b.taxes.toLocaleString('en-IN')}`;
+
+    // 2. Claim Feasibility Status Badge
+    const statusBadge = document.getElementById('status-badge');
+    if (b.total_estimated > 5000) {
+        statusBadge.textContent = "● Claim Recommended";
+        statusBadge.className = "badge-claim-status badge-recommended";
+    } else {
+        statusBadge.textContent = "● Out-of-Pocket Advisory";
+        statusBadge.className = "badge-claim-status badge-advisory";
+    }
+
+    // 3. Benchmarks & Delta
+    document.getElementById('bm-low').textContent = b.independent_avg.toLocaleString('en-IN');
+    document.getElementById('bm-mid').textContent = b.market_avg.toLocaleString('en-IN');
+    document.getElementById('bm-high').textContent = b.dealer_avg.toLocaleString('en-IN');
+
+    const deltaContainer = document.getElementById('delta-container');
+    const deltaIcon = document.getElementById('delta-icon');
+    const deltaText = document.getElementById('delta-text');
+
+    if (b.diff_pct < -5) {
+        deltaIcon.textContent = "📉";
+        deltaText.innerHTML = `Your estimate is <strong class="delta-good">${Math.abs(b.diff_pct)}% lower</strong> than regional market average`;
+    } else if (b.diff_pct > 15) {
+        deltaIcon.textContent = "📈";
+        deltaText.innerHTML = `Your estimate is <strong class="delta-warn">${b.diff_pct}% above</strong> average (OEM / Dealer spec)`;
+    } else {
+        deltaIcon.textContent = "⚖️";
+        deltaText.innerHTML = `Your estimate is <strong class="delta-neutral">in line (${Math.abs(b.diff_pct)}%)</strong> with standard market benchmarks`;
+    }
+
+    // 4. Gauge Needle position (clamp 5% to 95%)
+    const minRef = b.independent_avg * 0.7;
+    const maxRef = b.dealer_avg * 1.25;
+    let ratio = (b.total_estimated - minRef) / (maxRef - minRef);
+    ratio = Math.max(0.05, Math.min(0.95, ratio));
+    document.getElementById('gauge-pointer').style.left = `${(ratio * 100).toFixed(1)}%`;
+
+    // 5. Comparative Bars
+    const maxBar = Math.max(b.dealer_avg * 1.15, b.total_estimated * 1.1);
+    document.getElementById('bar-val-user').textContent = `₹${b.total_estimated.toLocaleString('en-IN')}`;
+    document.getElementById('bar-val-market').textContent = `₹${b.market_avg.toLocaleString('en-IN')}`;
+    document.getElementById('bar-val-dealer').textContent = `₹${b.dealer_avg.toLocaleString('en-IN')}`;
+
+    document.getElementById('bar-fill-user').style.width = `${((b.total_estimated / maxBar) * 100).toFixed(1)}%`;
+    document.getElementById('bar-fill-market').style.width = `${((b.market_avg / maxBar) * 100).toFixed(1)}%`;
+    document.getElementById('bar-fill-dealer').style.width = `${((b.dealer_avg / maxBar) * 100).toFixed(1)}%`;
+
+    // 6. Dynamic AI Repair recommendation update if not hardcoded from image
+    const strategyEl = document.getElementById('ai-repair-strategy');
+    const sev = document.getElementById('inp-severity').value;
+    const part = document.getElementById('inp-damaged-part').options[document.getElementById('inp-damaged-part').selectedIndex].text;
+    const dmg = document.getElementById('inp-damage-type').options[document.getElementById('inp-damage-type').selectedIndex].text;
+
+    if (!"{{ repair_recommendation }}" && !"{{ notes }}") {
+        let rec = "";
+        if (sev === 'minor') {
+            rec = `Cosmetic ${dmg.toLowerCase()} on ${part.toLowerCase()}. Paintless Dent Repair (PDR) or spot clear coat blending recommended. Out-of-pocket repair will preserve your No-Claim Bonus (NCB).`;
+        } else if (sev === 'moderate') {
+            rec = `Moderate ${dmg.toLowerCase()} on ${part.toLowerCase()}. Structural bodywork and full panel respray required. Claiming insurance is financially advantageous against standard compulsory deductibles.`;
+        } else {
+            rec = `Major ${dmg.toLowerCase()} requiring complete component replacement and frame alignment inspection. Formal cashless insurer claim strongly advised.`;
+        }
+        strategyEl.textContent = rec;
+    }
+}
+
+// Initial gauge sync on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateUI({
+        total_estimated: parseInt("{{ breakdown.total_estimated|default:28000 }}", 10),
+        min_estimated: parseInt("{{ breakdown.min_estimated|default:24000 }}", 10),
+        max_estimated: parseInt("{{ breakdown.max_estimated|default:32000 }}", 10),
+        parts_cost: parseInt("{{ breakdown.parts_cost|default:12000 }}", 10),
+        labor_cost: parseInt("{{ breakdown.labor_cost|default:6800 }}", 10),
+        labor_hours: parseFloat("{{ breakdown.labor_hours|default:8.0 }}"),
+        paint_cost: parseInt("{{ breakdown.paint_cost|default:6000 }}", 10),
+        taxes: parseInt("{{ breakdown.taxes|default:4464 }}", 10),
+        market_avg: parseInt("{{ breakdown.market_avg|default:28000 }}", 10),
+        dealer_avg: parseInt("{{ breakdown.dealer_avg|default:37800 }}", 10),
+        independent_avg: parseInt("{{ breakdown.independent_avg|default:22960 }}", 10),
+        diff_pct: parseFloat("{{ breakdown.diff_pct|default:0 }}"),
+    });
+});
+</script>
+{% endblock %}

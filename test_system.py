@@ -85,6 +85,8 @@ def test_database():
         
         # Create test database
         test_db = 'database/test.db'
+        if os.path.exists(test_db):
+            os.remove(test_db)
         db = DatabaseManager(test_db)
         
         # Test registration
